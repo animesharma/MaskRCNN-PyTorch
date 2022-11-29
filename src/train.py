@@ -72,11 +72,6 @@ class MaskRCNNTrain():
             type=str,
             help="Path where training weights are stored, to resume training"
         )
-
-    def load_data(self, train_path):
-        """
-        
-        """
         
     @staticmethod
     def _get_transform(train=False):
@@ -153,8 +148,9 @@ class MaskRCNNTrain():
         """
         
         """
+        print(os.getcwd())
         file_ids = []
-        for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations")):
+        for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations", "train")):
             for file_name in file_names:
                 file_ids.append(file_name[:-5])
 
@@ -172,14 +168,10 @@ class MaskRCNNTrain():
 
         # split the dataset in train and test set
         torch.manual_seed(1)
-        indices = torch.randperm(len(dataset)).tolist()
-        split = int(0.99 * len(dataset))
-        dataset = torch.utils.data.Subset(dataset, indices[:100])
-        dataset_test = torch.utils.data.Subset(dataset_test, indices[100:200])
 
         # define training and validation data loaders
         data_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=3, shuffle=True, num_workers=4,
+            dataset, batch_size=6, shuffle=True, num_workers=4,
             collate_fn = collate_fn
             )
 
@@ -210,7 +202,7 @@ class MaskRCNNTrain():
                                                        gamma=0.1)
 
         from torch.optim.lr_scheduler import StepLR
-        num_epochs = 10
+        num_epochs = 100
 
         for epoch in range(1, num_epochs + 1):
             # train for one epoch, printing every 10 iterations
@@ -221,7 +213,7 @@ class MaskRCNNTrain():
             weights_path = os.path.join("out", "weights")
             if not os.path.exists(weights_path):
                 os.makedirs(weights_path)
-            if epoch == 1 or epoch % 5 == 0:
+            if (epoch + 1) % 2 == 0 or epoch == 100:
                 torch.save(model, os.path.join(weights_path, str(epoch) + ".pth"))
             # evaluate on the test dataset
             #evaluate(model, data_loader_test, device=device)
@@ -235,7 +227,7 @@ class MaskRCNNTrain():
         args = self._parser.parse_args()
         if not os.path.exists(args.out_path):
             os.makedirs(args.out_path)
-        self._dataset_path = "./data/"
+        self._dataset_path = "./dataset/"
         self.train()
         #self._test_forward()
 

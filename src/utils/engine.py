@@ -63,7 +63,7 @@ def train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq, sc
     if not os.path.exists(loss_path):
             os.makedirs(loss_path)
     loss_dict_ = {k: v.item() for k, v in loss_dict.items()}
-    print(loss_dict_)
+    #print(loss_dict_)
     with open(os.path.join(loss_path, str(epoch) + ".pkl"), "wb") as f:
         pickle.dump(loss_dict_, f, protocol=pickle.HIGHEST_PROTOCOL)
             

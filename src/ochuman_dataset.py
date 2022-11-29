@@ -41,10 +41,10 @@ class OCHumanDataset(torch.utils.data.Dataset):
         """
         
         """
-        img_path = os.path.join(self.root_dir, "images", self.img_ids[index] + ".jpg")
+        img_path = os.path.join(self.root_dir, "images", "train", self.img_ids[index] + ".jpg")
         img = np.array(Image.open(img_path))
 
-        annotation_path = os.path.join(self.root_dir, "annotations", self.img_ids[index] + ".json")
+        annotation_path = os.path.join(self.root_dir, "annotations", "train", self.img_ids[index] + ".json")
         with open(annotation_path) as f:
             image_id, annotations = json.load(f)
 
