@@ -1,0 +1,250 @@
+import os
+import json
+from argparse import ArgumentParser
+
+import torch
+import torchvision
+import torchvision.transforms as T
+from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
+
+from ochuman_dataset import OCHumanDataset
+from utils.misc import collate_fn
+from utils.engine import evaluate, train_one_epoch
+
+class MaskRCNNTrain():
+    """
+    Class containing functions for saving all frames of a video streamed over a network
+    """
+    def __init__(self) -> None:
+        """
+        Constructor
+        """
+        self._parser = None
+        self._dataset_path = None
+
+    def _define_arguments(self):
+        """
+        Function to define arguments
+        """
+        self._parser.add_argument(
+            "--img_size",
+            dest="img_size",
+            action="store",
+            type=int, 
+            help="Dimensions of the image for training", 
+            required=True
+        )
+        self._parser.add_argument(
+            "--batch_size",
+            dest="batch_size",
+            action="store",
+            type=int,
+            help="Batch Size for training",
+            default=8
+        )
+        self._parser.add_argument(
+            "--train_path",
+            dest="train_path",
+            action="store",
+            type=str,
+            help="Path for training data",
+            required=True
+        )
+        self._parser.add_argument(
+            "--out_path",
+            dest="out_path",
+            action="store",
+            type=str,
+            help="Path to store trained weights",
+            required=True
+        )
+        self._parser.add_argument(
+            "--resume",
+            dest="resume",
+            action="store_true",
+            help="Path to store trained weights"
+        )
+        self._parser.add_argument(
+            "--model_path",
+            dest="model_path",
+            action="store",
+            type=str,
+            help="Path where training weights are stored, to resume training"
+        )
+
+    def load_data(self, train_path):
+        """
+        
+        """
+        
+    @staticmethod
+    def _get_transform(train=False):
+        """
+        
+        """
+        transforms = []
+        transforms.append(T.PILToTensor())
+        transforms.append(T.ConvertImageDtype(torch.float))
+        if train:
+            transforms.append(T.RandomHorizontalFlip(0.5))
+        return T.Compose(transforms)
+
+    @staticmethod
+    def _get_model(num_classes=1):
+        """
+        
+        """
+        # load an instance segmentation model pre-trained on COCO
+        model = torchvision.models.detection.maskrcnn_resnet50_fpn_v2(weights="DEFAULT")
+        # get number of input features for the classifier
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        # replace the pre-trained head with a new one
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+        # now get the number of input features for the mask classifier
+        in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+        hidden_layer = 256
+        # and replace the mask predictor with a new one
+        model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+                                                           hidden_layer,
+                                                           num_classes)
+        return model
+
+    #def _test_forward(self):
+    #    """
+    #    
+    #    """
+    #    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT")
+    #    #print(f"Model: {model}")
+    #    file_ids = []
+    #    for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations")):
+    #        for file_name in file_names:
+    #            file_ids.append(file_name[:-5])
+    #    #print(f"File IDs: {file_ids}")
+    #    dataset = OCHumanDataset(
+    #                    root_dir=self._dataset_path,
+    #                    img_ids=file_ids,
+    #                    transforms=None
+    #                    #transforms=self._get_transform(train=True)
+    #                )
+    #    data_loader = torch.utils.data.DataLoader(
+    #                    dataset, 
+    #                    batch_size=2, 
+    #                    shuffle=True, 
+    #                    num_workers=4
+    #                )
+    #    # For Training
+    #    print(next(iter(data_loader)))
+    #    images, targets = next(iter(data_loader))
+    #    print(type(images), type(targets))
+    #    images = list(image for image in images)
+    #    #print(f"Targets: {targets}")
+    #    targets = [{k: v for k, v in t.items()} for t in targets]
+    #    output = model(images, targets)   # Returns losses and detections
+    #    print(f"Output: {output}")
+    #    # For inference
+    #    model.eval()
+    #    x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
+    #    predictions = model(x)
+    #    print(f"Predictions: {predictions}")           # Returns predictions
+
+
+    def train(self):
+        """
+        
+        """
+        file_ids = []
+        for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations")):
+            for file_name in file_names:
+                file_ids.append(file_name[:-5])
+
+        # use our dataset and defined transformations
+        dataset = OCHumanDataset(
+                        root_dir=self._dataset_path,
+                        img_ids=file_ids,
+                        transforms=None
+                    )
+        dataset_test = OCHumanDataset(
+                        root_dir=self._dataset_path,
+                        img_ids=file_ids,
+                        transforms=None
+                    )
+
+        # split the dataset in train and test set
+        torch.manual_seed(1)
+        indices = torch.randperm(len(dataset)).tolist()
+        split = int(0.99 * len(dataset))
+        dataset = torch.utils.data.Subset(dataset, indices[:100])
+        dataset_test = torch.utils.data.Subset(dataset_test, indices[100:200])
+
+        # define training and validation data loaders
+        data_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=3, shuffle=True, num_workers=4,
+            collate_fn = collate_fn
+            )
+
+        data_loader_test = torch.utils.data.DataLoader(
+            dataset_test, batch_size=3, shuffle=False, num_workers=4,
+            collate_fn = collate_fn
+            )
+
+        device = torch.device('cuda')
+
+        # our dataset has two classes only - background and person
+        num_classes = 2
+
+        # get the model using our helper function
+        model = self._get_model(num_classes)
+        # move model to the right device
+        model.to(device)
+
+        # construct an optimizer
+        params = [p for p in model.parameters() if p.requires_grad]
+        optimizer = torch.optim.SGD(params, lr=0.005,
+                                    momentum=0.9, weight_decay=0.0005)
+
+        # and a learning rate scheduler which decreases the learning rate by
+        # 10x every 3 epochs
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+                                                       step_size=3,
+                                                       gamma=0.1)
+
+        from torch.optim.lr_scheduler import StepLR
+        num_epochs = 10
+
+        for epoch in range(1, num_epochs + 1):
+            # train for one epoch, printing every 10 iterations
+            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+            # update the learning rate
+            lr_scheduler.step()
+            # Save weights
+            weights_path = os.path.join("out", "weights")
+            if not os.path.exists(weights_path):
+                os.makedirs(weights_path)
+            if epoch == 1 or epoch % 5 == 0:
+                torch.save(model, os.path.join(weights_path, str(epoch) + ".pth"))
+            # evaluate on the test dataset
+            #evaluate(model, data_loader_test, device=device)
+
+    def run(self):
+        """
+        Run function
+        """
+        self._parser = ArgumentParser()
+        self._define_arguments()
+        args = self._parser.parse_args()
+        if not os.path.exists(args.out_path):
+            os.makedirs(args.out_path)
+        self._dataset_path = "./data/"
+        self.train()
+        #self._test_forward()
+
+if __name__ == "__main__":
+    MaskRCNNTrain().run()        
+        
+
+
+#batchSize=2
+#imageSize=[600,600]
+#device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
