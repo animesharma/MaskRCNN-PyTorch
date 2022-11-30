@@ -32,7 +32,7 @@ class RandomHorizontalFlip(object):
 
     """
 
-    def __init__(self, p=0.5):
+    def __init__(self, p=0):
         self.p = p
 
     def __call__(self, img, bboxes):
@@ -79,6 +79,9 @@ class HorizontalFlip(object):
     def __call__(self, img, bboxes):
         img_center = np.array(img.shape[:2])[::-1]/2
         img_center = np.hstack((img_center, img_center))
+
+        if len(img.shape) < 3:
+            img = np.expand_dims(img, -1)
 
         img = img[:, ::-1, :]
         #bboxes[:, [0, 2]] += 2*(img_center[[0, 2]] - bboxes[:, [0, 2]])
@@ -811,6 +814,7 @@ class Sequence(object):
         self.probs = probs
 
     def __call__(self, images, bboxes):
+        prob_list = []
         for i, augmentation in enumerate(self.augmentations):
             if type(self.probs) == list:
                 prob = self.probs[i]
@@ -819,4 +823,7 @@ class Sequence(object):
 
             if random.random() < prob:
                 images, bboxes = augmentation(images, bboxes)
-        return images, bboxes
+                prob_list.append(1)
+            else:
+                prob_list.append(0)
+        return images, bboxes, prob_list
