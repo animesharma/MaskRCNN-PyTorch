@@ -2,26 +2,29 @@ import os
 import json
 import torch
 import numpy as np
+import cv2
 from PIL import Image
 from typing import Tuple
 
 import torchvision.transforms as transforms
-import torchvision
+import albumentations as A
+#import torchvision
 
-from utils.data_aug import *
-from utils.bbox_util import *
+#from utils.data_aug import *
+#from utils.bbox_util import *
 
 class OCHumanDataset(torch.utils.data.Dataset):
     """
     
     """
-    def __init__(self, root_dir, img_ids, transforms) -> None:
+    def __init__(self, root_dir, img_ids, transforms, train) -> None:
         """
         Constructor
         """
         self.root_dir = root_dir     
         self.img_ids = img_ids
         self.transforms = transforms
+        self.train = True
 
     def __len__(self) -> int:
         """
@@ -49,17 +52,26 @@ class OCHumanDataset(torch.utils.data.Dataset):
             image_id, annotations = json.load(f)
 
         bboxes = np.array([annotations["boxes"][i] + [annotations["labels"][i]] for i in range(len(annotations["labels"]))])
+
+        mask = list(np.array(masks))
+
+        transform = A.Compose([
+            A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
+            A.HorizontalFlip(p=0.5),
+            A.augmentations.geometric.transforms.Affine([0.8,1],keep_ratio=True,p=0.5),
+            A.geometric.resize.LongestMaxSize(max_size=600)
+        ], bbox_params=A.BboxParams(format='pascal_voc'))
         
-        img_, bboxes_ = Resize(600)(img, bboxes)
+        #img_, bboxes_ = Resize(600)(img, bboxes)
 
         masks = []
 
-        for mask in annotations["masks"]:
-            mask = np.array(mask).astype('uint8')
-            mask_ = np.expand_dims(mask, -1)
-            mask_, _ = Resize(600)(mask_, bboxes)
-            mask_ = np.squeeze(mask_)
-            masks.append(mask_)
+        #for mask in annotations["masks"]:
+        #    mask = np.array(mask).astype('uint8')
+        #    mask_ = np.expand_dims(mask, -1)
+        #    mask_, _ = Resize(600)(mask_, bboxes)
+        #    mask_ = np.squeeze(mask_)
+        #    masks.append(mask_)
 
         bboxes__ = np.array([bbox[:-1] for bbox in bboxes_])
         area = torch.as_tensor(list(map(self._get_area, bboxes__)), dtype=torch.int64)
