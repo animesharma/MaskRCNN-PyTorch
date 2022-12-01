@@ -171,7 +171,7 @@ class MaskRCNNTrain():
 
         # define training and validation data loaders
         data_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=6, shuffle=True, num_workers=4,
+            dataset, batch_size=8, shuffle=True, num_workers=4,
             collate_fn = collate_fn
             )
 
@@ -192,16 +192,16 @@ class MaskRCNNTrain():
 
         # construct an optimizer
         params = [p for p in model.parameters() if p.requires_grad]
-        optimizer = torch.optim.SGD(params, lr=0.005,
-                                    momentum=0.9, weight_decay=0.0005)
+
+        optimizer = torch.optim.AdamW(params, lr=0.01)
+
+        #optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
 
         # and a learning rate scheduler which decreases the learning rate by
         # 10x every 3 epochs
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
-                                                       step_size=3,
-                                                       gamma=0.1)
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.85)
+        #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
-        from torch.optim.lr_scheduler import StepLR
         num_epochs = 100
 
         for epoch in range(1, num_epochs + 1):
