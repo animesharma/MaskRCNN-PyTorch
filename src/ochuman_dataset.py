@@ -17,14 +17,14 @@ class OCHumanDataset(torch.utils.data.Dataset):
     """
     
     """
-    def __init__(self, root_dir, img_ids, transforms, train) -> None:
+    def __init__(self, root_dir, img_ids, transforms, train=True) -> None:
         """
         Constructor
         """
         self.root_dir = root_dir     
         self.img_ids = img_ids
         self.transforms = transforms
-        self.train = True
+        self.train = train
 
     def __len__(self) -> int:
         """
@@ -53,18 +53,44 @@ class OCHumanDataset(torch.utils.data.Dataset):
 
         bboxes = np.array([annotations["boxes"][i] + [annotations["labels"][i]] for i in range(len(annotations["labels"]))])
 
-        mask = list(np.array(masks))
-
-        transform = A.Compose([
-            A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
-            A.HorizontalFlip(p=0.5),
-            A.augmentations.geometric.transforms.Affine([0.8,1],keep_ratio=True,p=0.5),
-            A.geometric.resize.LongestMaxSize(max_size=600)
-        ], bbox_params=A.BboxParams(format='pascal_voc'))
         
-        #img_, bboxes_ = Resize(600)(img, bboxes)
 
-        masks = []
+        if self.train:
+            transform = A.Compose([
+                A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
+                A.HorizontalFlip(p=0.5),
+                A.augmentations.geometric.transforms.Affine([0.8,1],keep_ratio=True,p=0.5),
+                A.geometric.resize.LongestMaxSize(max_size=600)
+            ], bbox_params=A.BboxParams(format='pascal_voc'))
+        else:
+            transform = A.Compose([
+                    A.geometric.resize.LongestMaxSize(max_size=600)
+                ])
+
+        transformed = transform(
+                          image=img,
+                          masks=list(np.array(annotations["masks"])),
+                          bboxes=bboxes
+                        )
+
+        transformed_image = transformed["image"]
+        transformed_masks = transformed["masks"]
+        transformed_bboxes = transformed["bboxes"]
+
+        height, width, channels = np.shape(transformed_image)
+        # Create a black image
+        x = height if height > width else width
+        y = height if height > width else width
+        resized_img = np.zeros((x, y, channels), np.uint8)
+        resized_img[0 : int(y-(y-height)), 0 : int(x-(x-width))] = transformed_image
+
+        resized_masks = []
+        for i in range(len(transformed_masks)):
+            temp = np.zeros((x, y, 1), np.uint8)
+            temp[0 : int(y-(y-height)), 0 : int(x-(x-width))] = np.expand_dims(transformed_masks[i], -1)
+            resized_masks.append(np.squeeze(temp))
+
+        #img_, bboxes_ = Resize(600)(img, bboxes)
 
         #for mask in annotations["masks"]:
         #    mask = np.array(mask).astype('uint8')
@@ -73,20 +99,17 @@ class OCHumanDataset(torch.utils.data.Dataset):
         #    mask_ = np.squeeze(mask_)
         #    masks.append(mask_)
 
-        bboxes__ = np.array([bbox[:-1] for bbox in bboxes_])
+        bboxes__ = np.array([bbox[:-1] for bbox in transformed_bboxes])
         area = torch.as_tensor(list(map(self._get_area, bboxes__)), dtype=torch.int64)
 
         bboxes_tensor = torch.as_tensor(bboxes__, dtype=torch.float32)
-        transform = transforms.Compose([
+
+        tensor_transform = transforms.Compose([
                 transforms.ToTensor()
             ])
-        img_pil = Image.fromarray(img_)
-        #img_tensor = torch.from_numpy(img_)
-        img_tensor = transform(img_pil)
-        #img_tensor = torch.as_tensor(torchvision.transforms.functional.convert_image_dtype(img_, dtype = torch.float32))
-        #print(f"{image_id}\t{type(img_tensor)}")
-        #print(f"Image ID: {image_id}\tBBoxes: {bboxes_tensor}\n")
-        masks_tensor = torch.from_numpy(np.array(masks))
+        #print(resized_img.shape)
+        img_tensor = tensor_transform(Image.fromarray(resized_img))
+        masks_tensor = torch.from_numpy(np.array(resized_masks))
 
         target = {"image_id": image_id}
         target["boxes"] = bboxes_tensor
