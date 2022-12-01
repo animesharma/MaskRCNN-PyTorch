@@ -17,22 +17,12 @@ with open("C:/Users/WanyingMo/Desktop/data/000040.json") as f:
 img = cv2.imread("C:/Users/WanyingMo/Desktop/images/000040.jpg")[:,:,::-1]
 
 masks = annotations["masks"]
-max_mask = np.zeros((np.shape(img)[0], np.shape(img)[1], 1))
-for mask in annotations["masks"]:
-    mask = np.array(mask).astype('uint8')
-    mask_ = np.expand_dims(mask, -1)
-    max_mask += mask_
-max_mask[max_mask > 1] = 1
-mask = max_mask
+
+
+mask = list(np.array(masks))
 
 bbox = np.array([annotations["boxes"][i] + [annotations["labels"][i]] for i in range(len(annotations["labels"]))])
-print(bbox)
-#bbox = 
-#if len(annotations["labels"])>1:
-#    bboxes = [bbox[0],bbox[1]]
-#else:
-#    bboxes = bbox
-#print(bboxes)
+
 transform = A.Compose([
     A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
     A.HorizontalFlip(p=0.5),
@@ -42,26 +32,21 @@ transform = A.Compose([
 
 transformed = transform(
   image=img,
-  mask=mask,
+  masks=mask,
   bboxes=bbox
 )
 
 transformed_image = transformed["image"]
-transformed_mask = transformed["mask"]
+transformed_mask = transformed["masks"]
+print(len(transformed_mask))
 transformed_bboxes = transformed["bboxes"]
 print(transformed_bboxes)
-#print(bboxes,'b')
-#print(transformed_bboxes,'t')
+
 plotted_img = transformed_image
 cv2.rectangle(transformed_image, (int(transformed_bboxes[0][0]),int(transformed_bboxes[0][1])), (int(transformed_bboxes[0][2]),int(transformed_bboxes[0][3])), (255,0,0), 4)
 cv2.rectangle(transformed_image, (int(transformed_bboxes[1][0]),int(transformed_bboxes[1][1])), (int(transformed_bboxes[1][2]),int(transformed_bboxes[1][3])), (255,0,0), 4)
-#print(type(img))
-#print(type(transformed_image))
-#new_size=(892,500)
-#transformed_image = transformed_image.copy()
-#transformed_image = transformed_image.resize(new_size)
+
 height, width, channels = np.shape(transformed_image)
-print (height, width, channels)
 # Create a black image
 x = height if height > width else width
 y = height if height > width else width
@@ -72,11 +57,14 @@ square= np.zeros((x,y,3), np.uint8)
 square[0:int(y-(y-height)), 0:int(x-(x-width))] = transformed_image
 
 
-
-square_mask= np.zeros((x,y,1), np.uint8)
-square_mask[0:int(y-(y-height)), 0:int(x-(x-width))] = transformed_mask
+square_masks=[]
+for i in range(len(transformed_mask)):
+    temp = np.zeros((x,y,1), np.uint8)
+    temp[0:int(y-(y-height)), 0:int(x-(x-width))] = np.expand_dims(transformed_mask[i], -1)
+    square_masks.append(temp)
 
 plt.figure(figsize = (7, 7))
 plt.imshow(square)
-plt.imshow(square_mask,alpha=0.4)
+plt.imshow(square_masks[0],alpha=0.4)
+plt.imshow(square_masks[1],alpha=0.4)
 plt.show()
