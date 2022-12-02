@@ -150,9 +150,9 @@ class MaskRCNNTrain():
         """
         print(os.getcwd())
         file_ids = []
-        for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations", "train")):
+        for _, _, file_names in os.walk(os.path.join(self._dataset_path, "images", "train")):
             for file_name in file_names:
-                file_ids.append(file_name[:-5])
+                file_ids.append(file_name.split(".")[0])
 
         # use our dataset and defined transformations
         dataset = OCHumanDataset(
@@ -206,7 +206,7 @@ class MaskRCNNTrain():
 
         for epoch in range(1, num_epochs + 1):
             # train for one epoch, printing every 10 iterations
-            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=10)
+            train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
             # update the learning rate
             lr_scheduler.step()
             # Save weights
