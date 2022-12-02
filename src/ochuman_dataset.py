@@ -44,10 +44,16 @@ class OCHumanDataset(torch.utils.data.Dataset):
         """
         
         """
-        img_path = os.path.join(self.root_dir, "images", "train", self.img_ids[index] + ".jpg")
+        if self.train:
+            img_path = os.path.join(self.root_dir, "images", "train", self.img_ids[index] + ".jpg")
+        else:
+            img_path = os.path.join(self.root_dir, "images", "test", self.img_ids[index] + ".jpg")
         img = np.array(Image.open(img_path))
 
-        annotation_path = os.path.join(self.root_dir, "annotations", "train", self.img_ids[index] + ".json")
+        if self.train:
+            annotation_path = os.path.join(self.root_dir, "annotations", "train", self.img_ids[index] + ".json")
+        else:
+            annotation_path = os.path.join(self.root_dir, "annotations", "test", self.img_ids[index] + ".json")
         with open(annotation_path) as f:
             image_id, annotations = json.load(f)
 
@@ -65,7 +71,7 @@ class OCHumanDataset(torch.utils.data.Dataset):
         else:
             transform = A.Compose([
                     A.geometric.resize.LongestMaxSize(max_size=600)
-                ])
+                ], bbox_params=A.BboxParams(format='pascal_voc'))
 
         transformed = transform(
                           image=img,
@@ -75,7 +81,7 @@ class OCHumanDataset(torch.utils.data.Dataset):
 
         transformed_image = transformed["image"]
         transformed_masks = transformed["masks"]
-        transformed_bboxes = transformed["bboxes"]
+        transformed_bboxes = transformed.get("bboxes")
 
         height, width, channels = np.shape(transformed_image)
         # Create a black image

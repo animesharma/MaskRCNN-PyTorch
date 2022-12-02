@@ -35,13 +35,14 @@ if __name__ == "__main__":
     dataset_test = OCHumanDataset(
                         root_dir="./dataset/",
                         img_ids=file_ids,
-                        transforms=None
+                        transforms=None,
+                        train=False
                     )
     data_loader_test = torch.utils.data.DataLoader(
                         dataset_test, 
-                        batch_size=8, 
+                        batch_size=1, 
                         shuffle=False, 
-                        num_workers=8,
+                        num_workers=1,
                         collate_fn = collate_fn
                     )
 
@@ -49,7 +50,7 @@ if __name__ == "__main__":
     cpu_device = torch.device("cpu") 
 
     with torch.no_grad():
-        model = torch.load("./out/weights/25.pth")
+        model = torch.load("./out/weights/47.pth")
         model.to(device)
         model.eval()
 
