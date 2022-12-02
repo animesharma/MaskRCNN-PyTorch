@@ -50,7 +50,7 @@ if __name__ == "__main__":
     cpu_device = torch.device("cpu") 
 
     with torch.no_grad():
-        model = torch.load("./out/weights/47.pth")
+        model = torch.load("./out/weights/100.pth")
         model.to(device)
         model.eval()
 
