@@ -11,10 +11,10 @@ import random
 import json
 #from PIL import Image
 
-with open("C:/Users/WanyingMo/Desktop/data/000040.json") as f:
+with open("C:/Users/WanyingMo/Desktop/data/000041.json") as f:
     img_id, annotations = json.load(f)
     #bboxes = np.array([annotations["boxes"][i] for i in range(len(annotations["labels"]))])
-img = cv2.imread("C:/Users/WanyingMo/Desktop/images/000040.jpg")[:,:,::-1]
+img = cv2.imread("C:/Users/WanyingMo/Desktop/images/000041.jpg")[:,:,::-1]
 
 masks = annotations["masks"]
 
@@ -38,13 +38,11 @@ transformed = transform(
 
 transformed_image = transformed["image"]
 transformed_mask = transformed["masks"]
-print(len(transformed_mask))
 transformed_bboxes = transformed["bboxes"]
-print(transformed_bboxes)
 
 plotted_img = transformed_image
-cv2.rectangle(transformed_image, (int(transformed_bboxes[0][0]),int(transformed_bboxes[0][1])), (int(transformed_bboxes[0][2]),int(transformed_bboxes[0][3])), (255,0,0), 4)
-cv2.rectangle(transformed_image, (int(transformed_bboxes[1][0]),int(transformed_bboxes[1][1])), (int(transformed_bboxes[1][2]),int(transformed_bboxes[1][3])), (255,0,0), 4)
+#cv2.rectangle(transformed_image, (int(transformed_bboxes[0][0]),int(transformed_bboxes[0][1])), (int(transformed_bboxes[0][2]),int(transformed_bboxes[0][3])), (255,0,0), 4)
+#cv2.rectangle(transformed_image, (int(transformed_bboxes[1][0]),int(transformed_bboxes[1][1])), (int(transformed_bboxes[1][2]),int(transformed_bboxes[1][3])), (255,0,0), 4)
 
 height, width, channels = np.shape(transformed_image)
 # Create a black image
@@ -63,8 +61,33 @@ for i in range(len(transformed_mask)):
     temp[0:int(y-(y-height)), 0:int(x-(x-width))] = np.expand_dims(transformed_mask[i], -1)
     square_masks.append(temp)
 
+
+#show masks
+cyan = np.full_like(square,(255,255,0))
+
+# add cyan to img and save as new image
+blend = 0.5
+img_cyan = cv2.addWeighted(square, blend, cyan, 1-blend, 0)
+
+H, W , K= square_masks[0].shape
+
+new_img = np.zeros([H, W, 3],dtype = int)
+
+
+for y in range(H):
+    for x in range(W):
+        if all(mask[y,x]==0 for mask in square_masks):
+            new_img[y,x] = square[y,x]
+        else:
+            new_img[y,x] = img_cyan[y,x]
+        
+
+
+
 plt.figure(figsize = (7, 7))
-plt.imshow(square)
-plt.imshow(square_masks[0],alpha=0.4)
-plt.imshow(square_masks[1],alpha=0.4)
+plt.imshow(plotted_img)
+plt.imshow(new_img) 
+
+#plt.imshow(square_masks[0],alpha=0.4)
+#plt.imshow(square_masks[1],alpha=0.4)
 plt.show()
