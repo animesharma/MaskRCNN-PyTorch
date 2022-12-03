@@ -1,5 +1,4 @@
 import os
-import json
 from argparse import ArgumentParser
 
 import torch
@@ -202,6 +201,25 @@ class MaskRCNNTrain():
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.85)
         #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
+        test_file_ids = []
+        for _, _, file_names in os.walk(os.path.join("./dataset", "annotations", "test")):
+            for file_name in file_names:
+                test_file_ids.append(file_name.split(".")[0])
+
+        dataset_test = OCHumanDataset(
+                            root_dir="./dataset/",
+                            img_ids=test_file_ids,
+                            transforms=None,
+                            train=False
+                        )
+        data_loader_test = torch.utils.data.DataLoader(
+                            dataset_test, 
+                            batch_size=8, 
+                            shuffle=False, 
+                            num_workers=4,
+                            collate_fn = collate_fn
+                        )
+
         num_epochs = 100
 
         for epoch in range(1, num_epochs + 1):
@@ -215,8 +233,9 @@ class MaskRCNNTrain():
                 os.makedirs(weights_path)
             if (epoch + 1) % 2 == 0 or epoch == 100:
                 torch.save(model, os.path.join(weights_path, str(epoch) + ".pth"))
+            with torch.no_grad():
             # evaluate on the test dataset
-            #evaluate(model, data_loader_test, device=device)
+                evaluate(model, data_loader_test, device=device)
 
     def run(self):
         """
