@@ -2,7 +2,7 @@ import os
 import torch
 from ochuman_dataset import OCHumanDataset
 from utils.misc import collate_fn
-
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -18,20 +18,47 @@ def show_img(index, images, outputs, cpu_device=torch.device("cpu")):
 
         img = images[i].to(cpu_device).permute(1, 2, 0).numpy()
 
+        for x in range(600):
+            for y in range(600):
+                for j in range(3):
+                    img[x][y][j] = int(img[x][y][j]*255)
+
         overall_mask[overall_mask > 0] = 1
 
+        #print(np.shape(overall_mask))
+        #print(np.shape(img))
+
+        cyan = np.full_like(img,(255,255,0))
+
+# add cyan to img and save as new image
+        blend = 0.5
+        img_cyan = cv2.addWeighted(img, blend, cyan, 1-blend, 0)
+
+
+        new_img = np.zeros([600, 600, 3],dtype = int)
+        overall_mask = overall_mask.reshape(600,600)
+
+        for y in range(600):
+            for x in range(600):
+                if int(overall_mask[y,x]) == 0:
+                    new_img[y,x] = img[y,x]
+                else:
+                    new_img[y,x] = img_cyan[y,x]
+
+        
         plt.figure(figsize = (7, 7))
-        plt.imshow(img)
-        plt.imshow(overall_mask, alpha=0.4)
-        plt.savefig(os.path.join("./out", f"{index}_{i}.jpg"))
-        plt.close()
+        #plt.imshow(img)
+        plt.imshow(new_img)
+        #plt.savefig(os.path.join("./out", f"{index}_{i}.jpg"))
+        plt.show()
+        #plt.close()
 
 if __name__ == "__main__":
     file_ids = []
-    for _, _, file_names in os.walk(os.path.join("./dataset", "annotations", "test")):
+    for _, _, file_names in os.walk(os.path.join("./dataset")):
         for file_name in file_names:
-            file_ids.append(file_name[:-5])
-    
+            file_ids.append(file_name.split(".")[0])
+
     dataset_test = OCHumanDataset(
                         root_dir="./dataset/",
                         img_ids=file_ids,
