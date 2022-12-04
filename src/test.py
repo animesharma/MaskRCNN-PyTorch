@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import torch
 from ochuman_dataset import OCHumanDataset
 from utils.eval import *
@@ -28,64 +29,75 @@ if __name__ == "__main__":
     device = torch.device("cuda")
     cpu_device = torch.device("cpu") 
 
-    pred_dict = {}
-    gt_dict = {}
+    eval_dict = {}
+
+    base_weight_dir = "./out/weights/"
+    base_metrics_dir = "./out/metrics/"
+    if not os.path.exists(base_metrics_dir):
+        os.makedirs(base_metrics_dir)
 
     with torch.no_grad():
-        model = torch.load("./out/weights/100.pth")
-        model.to(device)
-        model.eval()
-        
-        bboxes = []
-        scores = []
+        for weight_file in os.listdir(base_weight_dir):
+            # Load model from weights
+            model = torch.load(os.path.join(base_weight_dir, weight_file))
+            model.to(device)
+            model.eval()
 
-        for i, (images, targets) in enumerate(data_loader_test):
-            print(i)
-            images = list(img.to(device) for img in images)
+            pred_dict = {}
+            gt_dict = {}
+            epoch = weight_file.split(".")[0]
+            bboxes = []
+            scores = []
 
-            outputs = model(images)
-            pred_boxes = outputs[0]["boxes"].to(cpu_device).numpy()
-            pred_scores = outputs[0]["scores"].to(cpu_device).numpy()
-            image_id = targets[0]["image_id"].item()
-            gt_boxes = targets[0]["boxes"].to(cpu_device).numpy()
-            pred_dict[image_id] = {"boxes": pred_boxes, "scores": pred_scores}
-            gt_dict[image_id] = gt_boxes
+            for i, (images, targets) in enumerate(data_loader_test):
+                print(f"Processing - Epoch: {epoch}, Index: {i}")
+                images = list(img.to(device) for img in images)
 
-         # Runs it for one IoU threshold
-        iou_thr = 0.7
-        start_time = time.time()
-        data = get_avg_precision_at_iou(gt_dict, pred_dict, iou_thr=iou_thr)
-        end_time = time.time()
-        print('Single IoU calculation took {:.4f} secs'.format(end_time - start_time))
-        print('avg precision: {:.4f}'.format(data['avg_prec']))
+                outputs = model(images)
+                pred_boxes = outputs[0]["boxes"].to(cpu_device).numpy()
+                pred_scores = outputs[0]["scores"].to(cpu_device).numpy()
+                image_id = targets[0]["image_id"].item()
+                gt_boxes = targets[0]["boxes"].to(cpu_device).numpy()
+                pred_dict[image_id] = {"boxes": pred_boxes, "scores": pred_scores}
+                gt_dict[image_id] = gt_boxes
 
-        start_time = time.time()
-        ax = None
-        avg_precs = []
-        iou_thrs = []
-        for idx, iou_thr in enumerate(np.linspace(0.5, 0.95, 10)):
-            data = get_avg_precision_at_iou(gt_dict, pred_dict, iou_thr=iou_thr)
-            avg_precs.append(data['avg_prec'])
-            iou_thrs.append(iou_thr)
-            precisions = data['precisions']
-            recalls = data['recalls']
-            ax = plot_pr_curve(
-                precisions, recalls, label='{:.2f}'.format(iou_thr), color=COLORS[idx*2], ax=ax)
-        # prettify for printing:
-        avg_precs = [float('{:.4f}'.format(ap)) for ap in avg_precs]
-        iou_thrs = [float('{:.4f}'.format(thr)) for thr in iou_thrs]
-        print('map: {:.2f}'.format(100*np.mean(avg_precs)))
-        print('avg precs: ', avg_precs)
-        print('iou_thrs:  ', iou_thrs)
-        plt.figure()
-        plt.legend(loc='upper right', title='IOU Thr', frameon=True)
-        for xval in np.linspace(0.0, 1.0, 11):
-            plt.vlines(xval, 0.0, 1.1, color='gray', alpha=0.3, linestyles='dashed')
-        end_time = time.time()
-        print('\nPlotting and calculating mAP takes {:.4f} secs'.format(end_time - start_time))
-        plt.savefig("./out/pr-curve")
+            # Runs it for one IoU threshold
+            #iou_thr = 0.7
+            #start_time = time.time()
+            #data = get_avg_precision_at_iou(gt_dict, pred_dict, iou_thr=iou_thr)
+            #end_time = time.time()
+            #print('Single IoU calculation took {:.4f} secs'.format(end_time - start_time))
+            #print('avg precision: {:.4f}'.format(data['avg_prec']))
 
-            
+            start_time = time.time()
+            ax = None
+            avg_precs = []
+            iou_thrs = []
+            for idx, iou_thr in enumerate(np.linspace(0.5, 0.95, 10)):
+                data = get_avg_precision_at_iou(gt_dict, pred_dict, iou_thr=iou_thr)
+                avg_precs.append(data['avg_prec'])
+                iou_thrs.append(iou_thr)
+                precisions = data['precisions']
+                recalls = data['recalls']
+                #ax = plot_pr_curve(
+                #    precisions, recalls, label='{:.2f}'.format(iou_thr), color=COLORS[idx*2], ax=ax)
+            # prettify for printing:
+            avg_precs = [float('{:.4f}'.format(ap)) for ap in avg_precs]
+            iou_thrs = [float('{:.4f}'.format(thr)) for thr in iou_thrs]
+            print('mAP: {:.2f}'.format(100 * np.mean(avg_precs)))
+            print('Average Precisions: ', avg_precs)
+            print('IoU Thresholds:  ', iou_thrs)
+            #plt.figure()
+            #plt.legend(loc='upper right', title='IOU Thresh', frameon=True)
+            #for xval in np.linspace(0.0, 1.0, 11):
+            #    plt.vlines(xval, 0.0, 1.1, color='gray', alpha=0.3, linestyles='dashed')
+            #end_time = time.time()
+            #print('\nPlotting and calculating mAP takes {:.4f} secs'.format(end_time - start_time))
+            #plt.savefig(f"{base_metrics_dir}/{epoch}.png")
+            #plt.show()
+            #plt.close()
+            eval_dict[epoch] = dictionary = dict(zip(iou_thrs, avg_precs))
+            with open(os.path.join(base_metrics_dir, "metrics.json"), "w") as f:
+                json.dump(eval_dict, f, indent=4)
 
-    #print(pred_dict)
 
