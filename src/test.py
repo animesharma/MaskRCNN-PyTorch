@@ -27,6 +27,9 @@ if __name__ == "__main__":
     device = torch.device("cuda")
     cpu_device = torch.device("cpu") 
 
+    pred_dict = {}
+    gt_dict = {}
+
     with torch.no_grad():
         model = torch.load("./out/weights/100.pth")
         model.to(device)
@@ -36,8 +39,20 @@ if __name__ == "__main__":
         scores = []
 
         for i, (images, targets) in enumerate(data_loader_test):
+            print(i)
             images = list(img.to(device) for img in images)
+
             outputs = model(images)
-            for output in outputs:
-                print(output.keys())
+            pred_boxes = outputs[0]["boxes"].to(cpu_device).numpy()
+            pred_scores = outputs[0]["scores"].to(cpu_device).numpy()
+            image_id = targets[0]["image_id"].item()
+            gt_boxes = targets[0]["boxes"].to(cpu_device).numpy()
+            pred_dict[image_id] = {"boxes": pred_boxes, "scores": pred_scores}
+            gt_dict[image_id] = gt_boxes
+
+            print(pred_dict, gt_dict)
+
+            
+
+    #print(pred_dict)
 

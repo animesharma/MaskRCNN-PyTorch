@@ -36,8 +36,9 @@ class OCHumanDataset(torch.utils.data.Dataset):
         x1, y1, x2, y2 = box
         return((x2 - x1) * (y2 - y1))
 
-    def _augment(self, img, bboxes=[], masks=[]):
-        if self.train:
+    @staticmethod
+    def _augment(img, bboxes=[], masks=[], annotations_flag=False):
+        if annotations_flag:
             # Human
             if len(bboxes) > 0:
                 transform = A.Compose([
@@ -89,16 +90,17 @@ class OCHumanDataset(torch.utils.data.Dataset):
         annotation_path = ""
         if self.train:
             annotation_path = os.path.join(self.root_dir, "annotations", "train", self.img_ids[index] + ".json")
-        #else:
-        #    annotation_path = os.path.join(self.root_dir, "annotations", "test", self.img_ids[index] + ".json")
+        else:
+            annotation_path = os.path.join(self.root_dir, "annotations", "test", self.img_ids[index] + ".json")
         
         if os.path.exists(annotation_path):
+            
             with open(annotation_path) as f:
                 image_id, annotations = json.load(f)
             bboxes = np.array([annotations["boxes"][i] + [annotations["labels"][i]] for i in range(len(annotations["labels"]))])
             masks = list(np.array(annotations["masks"]))
 
-            transformed = self._augment(img, bboxes, masks)
+            transformed = self._augment(img, bboxes, masks, annotations_flag=True)
             transformed_image = transformed["image"]
             transformed_masks = transformed["masks"]
             transformed_bboxes = transformed["bboxes"]
