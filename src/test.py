@@ -61,14 +61,6 @@ if __name__ == "__main__":
                 pred_dict[image_id] = {"boxes": pred_boxes, "scores": pred_scores}
                 gt_dict[image_id] = gt_boxes
 
-            # Runs it for one IoU threshold
-            #iou_thr = 0.7
-            #start_time = time.time()
-            #data = get_avg_precision_at_iou(gt_dict, pred_dict, iou_thr=iou_thr)
-            #end_time = time.time()
-            #print('Single IoU calculation took {:.4f} secs'.format(end_time - start_time))
-            #print('avg precision: {:.4f}'.format(data['avg_prec']))
-
             start_time = time.time()
             ax = None
             avg_precs = []
@@ -87,15 +79,7 @@ if __name__ == "__main__":
             print('mAP: {:.2f}'.format(100 * np.mean(avg_precs)))
             print('Average Precisions: ', avg_precs)
             print('IoU Thresholds:  ', iou_thrs)
-            #plt.figure()
-            #plt.legend(loc='upper right', title='IOU Thresh', frameon=True)
-            #for xval in np.linspace(0.0, 1.0, 11):
-            #    plt.vlines(xval, 0.0, 1.1, color='gray', alpha=0.3, linestyles='dashed')
-            #end_time = time.time()
-            #print('\nPlotting and calculating mAP takes {:.4f} secs'.format(end_time - start_time))
-            #plt.savefig(f"{base_metrics_dir}/{epoch}.png")
-            #plt.show()
-            #plt.close()
+    
             eval_dict[epoch] = dictionary = dict(zip(iou_thrs, avg_precs))
             with open(os.path.join(base_metrics_dir, "metrics.json"), "w") as f:
                 json.dump(eval_dict, f, indent=4)

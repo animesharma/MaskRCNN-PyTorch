@@ -11,7 +11,7 @@ import albumentations as A
 
 class OCHumanDataset(torch.utils.data.Dataset):
     """
-    
+    OC Human Dataset Class
     """
     def __init__(self, root_dir, img_ids, transforms, train=True) -> None:
         """
@@ -24,27 +24,30 @@ class OCHumanDataset(torch.utils.data.Dataset):
 
     def __len__(self) -> int:
         """
-        
+        Function to get size of dataset
         """
         return len(self.img_ids)
 
     @staticmethod
     def _get_area(box: list) -> int:
         """
-        
+        Function to get area
         """
         x1, y1, x2, y2 = box
         return((x2 - x1) * (y2 - y1))
 
     @staticmethod
     def _augment(img, bboxes=[], masks=[], annotations_flag=False):
+        """
+        Function for image augmentation during training
+        """
         if annotations_flag:
             # Human
             if len(bboxes) > 0:
                 transform = A.Compose([
                     A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
                     A.HorizontalFlip(p=0.5),
-                    A.augmentations.geometric.transforms.Affine([0.8,1],keep_ratio=True,p=0.7),
+                    A.augmentations.geometric.transforms.Affine([0.8, 1], keep_ratio=True, p=0.7),
                     A.geometric.resize.LongestMaxSize(max_size=600)
                 ], bbox_params=A.BboxParams(format='pascal_voc'))
                 transformed = transform(
@@ -57,7 +60,7 @@ class OCHumanDataset(torch.utils.data.Dataset):
                 transform = A.Compose([
                     A.geometric.rotate.SafeRotate(limit=50, p=0.5, border_mode=cv2.BORDER_REPLICATE),
                     A.HorizontalFlip(p=0.5),
-                    A.augmentations.geometric.transforms.Affine([0.8,1],keep_ratio=True,p=0.7),
+                    A.augmentations.geometric.transforms.Affine([0.8,1], keep_ratio=True, p=0.7),
                     A.geometric.resize.LongestMaxSize(max_size=600)
                 ])
                 transformed = transform(image=img)
@@ -73,7 +76,7 @@ class OCHumanDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index: int) -> Tuple[np.array, dict]:
         """
-        
+        Get item method
         """
         tensor_transform = transforms.Compose([
                     transforms.ToTensor()

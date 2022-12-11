@@ -5,7 +5,7 @@ from utils.misc import collate_fn
 import cv2
 import numpy as np
 
-def show_img(index, images, outputs, cpu_device=torch.device("cpu")):
+def save_img(index, images, outputs, cpu_device=torch.device("cpu")):
     overall_mask = np.zeros((600, 600, 1))
     for i in range(len(outputs)):
         for j in range(len(outputs[i]["masks"])):
@@ -59,4 +59,4 @@ if __name__ == "__main__":
         for i, (images, targets) in enumerate(data_loader_test):
             images = list(img.to(device) for img in images)
             outputs = model(images)
-            show_img(i, images, outputs)     
+            save_img(i, images, outputs)     

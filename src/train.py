@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 
 import torch
 import torchvision
-import torchvision.transforms as T
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
@@ -32,7 +31,7 @@ class MaskRCNNTrain():
             action="store",
             type=int, 
             help="Dimensions of the image for training", 
-            required=True
+            default=600
         )
         self._parser.add_argument(
             "--batch_size",
@@ -48,7 +47,7 @@ class MaskRCNNTrain():
             action="store",
             type=str,
             help="Path for training data",
-            required=True
+            default="./dataset"
         )
         self._parser.add_argument(
             "--out_path",
@@ -56,7 +55,7 @@ class MaskRCNNTrain():
             action="store",
             type=str,
             help="Path to store trained weights",
-            required=True
+            default="./out"
         )
         self._parser.add_argument(
             "--resume",
@@ -71,18 +70,6 @@ class MaskRCNNTrain():
             type=str,
             help="Path where training weights are stored, to resume training"
         )
-        
-    @staticmethod
-    def _get_transform(train=False):
-        """
-        
-        """
-        transforms = []
-        transforms.append(T.PILToTensor())
-        transforms.append(T.ConvertImageDtype(torch.float))
-        if train:
-            transforms.append(T.RandomHorizontalFlip(0.5))
-        return T.Compose(transforms)
 
     @staticmethod
     def _get_model(num_classes=1):
@@ -104,50 +91,11 @@ class MaskRCNNTrain():
                                                            num_classes)
         return model
 
-    #def _test_forward(self):
-    #    """
-    #    
-    #    """
-    #    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights="DEFAULT")
-    #    #print(f"Model: {model}")
-    #    file_ids = []
-    #    for _, _, file_names in os.walk(os.path.join(self._dataset_path, "annotations")):
-    #        for file_name in file_names:
-    #            file_ids.append(file_name[:-5])
-    #    #print(f"File IDs: {file_ids}")
-    #    dataset = OCHumanDataset(
-    #                    root_dir=self._dataset_path,
-    #                    img_ids=file_ids,
-    #                    transforms=None
-    #                    #transforms=self._get_transform(train=True)
-    #                )
-    #    data_loader = torch.utils.data.DataLoader(
-    #                    dataset, 
-    #                    batch_size=2, 
-    #                    shuffle=True, 
-    #                    num_workers=4
-    #                )
-    #    # For Training
-    #    print(next(iter(data_loader)))
-    #    images, targets = next(iter(data_loader))
-    #    print(type(images), type(targets))
-    #    images = list(image for image in images)
-    #    #print(f"Targets: {targets}")
-    #    targets = [{k: v for k, v in t.items()} for t in targets]
-    #    output = model(images, targets)   # Returns losses and detections
-    #    print(f"Output: {output}")
-    #    # For inference
-    #    model.eval()
-    #    x = [torch.rand(3, 300, 400), torch.rand(3, 500, 400)]
-    #    predictions = model(x)
-    #    print(f"Predictions: {predictions}")           # Returns predictions
-
 
     def train(self):
         """
-        
+        Train function
         """
-        print(os.getcwd())
         file_ids = []
         for _, _, file_names in os.walk(os.path.join(self._dataset_path, "images", "train")):
             for file_name in file_names:
@@ -165,7 +113,6 @@ class MaskRCNNTrain():
                         transforms=None
                     )
 
-        # split the dataset in train and test set
         torch.manual_seed(1)
 
         # define training and validation data loaders
@@ -194,12 +141,7 @@ class MaskRCNNTrain():
 
         optimizer = torch.optim.AdamW(params, lr=0.01)
 
-        #optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
-
-        # and a learning rate scheduler which decreases the learning rate by
-        # 10x every 3 epochs
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.85)
-        #lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.1)
 
         test_file_ids = []
         for _, _, file_names in os.walk(os.path.join("./dataset", "annotations", "test")):
@@ -223,7 +165,7 @@ class MaskRCNNTrain():
         num_epochs = 100
 
         for epoch in range(1, num_epochs + 1):
-            # train for one epoch, printing every 10 iterations
+            # train for one epoch, printing every 100 iterations
             train_one_epoch(model, optimizer, data_loader, device, epoch, print_freq=100)
             # update the learning rate
             lr_scheduler.step()
@@ -248,14 +190,7 @@ class MaskRCNNTrain():
             os.makedirs(args.out_path)
         self._dataset_path = "./dataset/"
         self.train()
-        #self._test_forward()
 
 if __name__ == "__main__":
     MaskRCNNTrain().run()        
-        
-
-
-#batchSize=2
-#imageSize=[600,600]
-#device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 

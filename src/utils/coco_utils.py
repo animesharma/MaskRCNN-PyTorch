@@ -4,7 +4,7 @@ import os
 import torch
 import torch.utils.data
 import torchvision
-from .transforms import Compose
+from torchvision.transforms import Compose
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 
